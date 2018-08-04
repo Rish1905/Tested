@@ -1,0 +1,59 @@
+{
+  "project_info": {
+    "project_number": "627576841578",
+    "firebase_url": "https://shuttle-u-home.firebaseio.com",
+    "project_id": "shuttle-u-home",
+    "storage_bucket": "shuttle-u-home.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:627576841578:android:0c8298a889c210bb",
+        "android_client_info": {
+          "package_name": "com.example.rishabh.shuttleuhome"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "627576841578-9kue2la759sfu726khff30g9bn1h8glc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.rishabh.shuttleuhome",
+            "certificate_hash": "d83fd9e1ce7f18ea31821151784cf9a99cc9ffa8"
+          }
+        },
+        {
+          "client_id": "627576841578-9gj7mkif59ie52dovtpvs5c7vo7bhs5h.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "627576841578-9gj7mkif59ie52dovtpvs5c7vo7bhs5h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAV0K23dBgfS-20m75ZfX-FkiG2j4cGdhQ"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "627576841578-9gj7mkif59ie52dovtpvs5c7vo7bhs5h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
