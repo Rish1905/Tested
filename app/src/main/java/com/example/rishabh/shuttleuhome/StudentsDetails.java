@@ -127,11 +127,11 @@ public class StudentsDetails extends AppCompatActivity {
         listView.setAdapter(arrayAdapter);
         sharedPreferences = this.getSharedPreferences("com.example.rishabh.shuttleuhome", Context.MODE_PRIVATE);
 
-        myRef.child("Booking").orderByChild("Status").equalTo("Waiting").addChildEventListener(new ChildEventListener() {
+        myRef.child("Booking").orderByChild("Status").equalTo("waiting").addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                String address = dataSnapshot.child("StudentAddress").getValue(String.class);
-                String name = dataSnapshot.child("StudentName").getValue(String.class);
+                String address = dataSnapshot.child("Address").getValue(String.class);
+                String name = dataSnapshot.child("Name").getValue(String.class);
                 DisplayListviewUserDetails data = new DisplayListviewUserDetails(name,address);
                 arrayList.add(data);
                 arrayAdapter.notifyDataSetChanged();
@@ -164,6 +164,5 @@ public class StudentsDetails extends AppCompatActivity {
                 dialog(position, view);
             }
         });
-
     }
 }
