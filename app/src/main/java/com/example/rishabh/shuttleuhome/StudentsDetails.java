@@ -3,6 +3,7 @@ package com.example.rishabh.shuttleuhome;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
+import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
@@ -49,7 +50,6 @@ public class StudentsDetails extends AppCompatActivity {
     private int numberOfPassengers;
 
     //SharedPreferences sharedPreferences;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,9 +57,9 @@ public class StudentsDetails extends AppCompatActivity {
 
         init();
         collectIntentData();
-        fetchPassengersToListview();
+        fetchPassengersToListview(); // internal calling of createCurrentTripFirebase() function
         updateStatusOfPassengers();
-        createCurrentTripFirebase();
+
 
         passengersListview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -67,8 +67,6 @@ public class StudentsDetails extends AppCompatActivity {
                 dialog(position, view);
             }
         });
-
-       // sharedPreferences = this.getSharedPreferences("com.example.rishabh.shuttleuhome", Context.MODE_PRIVATE);
     }
 
     private void init(){
@@ -101,8 +99,14 @@ public class StudentsDetails extends AppCompatActivity {
                             data.child("Name").getValue(String.class),data.child("Date").getValue(String.class),
                             data.child("SUID").getValue(String.class),data.child("Time").getValue(String.class));
                     passengersList.add(temp);
+                    myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Address").setValue(temp.getAddress());
+                    myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Name").setValue(temp.getName());
+                    myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("SigninTime").setValue(temp.getTime());
                 }
                 arrayAdapter.notifyDataSetChanged();
+                myRef.child("CurrentTrip").child("NumberOfPassengers").setValue(passengersList.size());
+
+                createCurrentTripFirebase();
             }
 
             @Override
@@ -112,24 +116,36 @@ public class StudentsDetails extends AppCompatActivity {
         });
     }
 
-    private void updateStatusOfPassengers(){
+    private void createCurrentTripFirebase(){
 
+        //Fetch Time
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+        myRef.child("CurrentTrip").child("DepartureTime").setValue(sdf.format(new Date()));
+
+        //Fetch Date
+        myRef.child("CurrentTrip").child("Date").setValue(passengersList.get(0).getDate());
+
+        //Fetch Driver's Name
+        final String uid = mAuth.getUid();
+        myRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for(DataSnapshot data: dataSnapshot.getChildren()){
+                    if(data.getKey().equals("Users"))
+                        myRef.child("CurrentTrip").child("DriverName").setValue(data.child("Drivers").child(uid).child("Name").getValue().toString());
+                    else if(data.getKey().equals("SupervisorName"))
+                        myRef.child("CurrentTrip").child("SupervisorName").setValue(data.getValue().toString());
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+            }
+        });
     }
 
-    private void createCurrentTripFirebase(){
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-        String departureTime = sdf.format(new Date());
 
-        String date = passengersList.get(0).getDate();
-
-        String uid = mAuth.getUid();
-        String driverName = myRef.child("Users").child("Drivers").child(uid).child("Name").toString();
-        try{
-            Log.i("info",driverName);
-        }
-        catch (Exception e){
-
-        }
+    private void updateStatusOfPassengers(){
 
     }
 
