@@ -1,9 +1,7 @@
 package com.example.rishabh.shuttleuhome;
 
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -13,28 +11,127 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.CheckedTextView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONObject;
+
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Date;
 
 public class StudentsDetails extends AppCompatActivity {
 
-    FirebaseDatabase database = FirebaseDatabase.getInstance();
-    DatabaseReference myRef = database.getReference();
-    ArrayList<DisplayListviewUserDetails> arrayList = new ArrayList<DisplayListviewUserDetails>();
-    CustomAdapter arrayAdapter;
-    ListView listView;
-    SharedPreferences sharedPreferences;
+    //Firebase Variables
+    private FirebaseDatabase database;
+    private DatabaseReference myRef;
+    private FirebaseAuth mAuth;
+
+    //ArrayList for storeing of Passengers details
+    private ArrayList<DisplayListviewUserDetails> passengersList;
+
+    //Listview for passengers
+    private ListView passengersListview;
+
+    //Custom Adapter for Listview
+    private CustomAdapter arrayAdapter;
+
+    //Number of passengers Requested
+    private int numberOfPassengers;
+
+    //SharedPreferences sharedPreferences;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_students_details);
+
+        init();
+        collectIntentData();
+        fetchPassengersToListview();
+        updateStatusOfPassengers();
+        createCurrentTripFirebase();
+
+        passengersListview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                dialog(position, view);
+            }
+        });
+
+       // sharedPreferences = this.getSharedPreferences("com.example.rishabh.shuttleuhome", Context.MODE_PRIVATE);
+    }
+
+    private void init(){
+
+        //Firebase variables initialize
+        mAuth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance();
+        myRef = database.getReference();
+
+        //Initialize variables for ListView
+        passengersList = new ArrayList<DisplayListviewUserDetails>();
+        passengersListview = (ListView) findViewById(R.id.passengersListview);
+        arrayAdapter = new CustomAdapter(this,R.layout.adapter_layout_view,passengersList);
+        passengersListview.setAdapter(arrayAdapter);
+
+    }
+
+    private void collectIntentData(){
+        Intent intent = getIntent();
+        numberOfPassengers = intent.getIntExtra("Passengers",0);
+    }
+
+    private void fetchPassengersToListview(){
+
+        myRef.child("Booking").orderByChild("Status").equalTo("waiting").limitToFirst(numberOfPassengers).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for(DataSnapshot data : dataSnapshot.getChildren()){
+                    DisplayListviewUserDetails temp = new DisplayListviewUserDetails(data.child("Address").getValue(String.class),
+                            data.child("Name").getValue(String.class),data.child("Date").getValue(String.class),
+                            data.child("SUID").getValue(String.class),data.child("Time").getValue(String.class));
+                    passengersList.add(temp);
+                }
+                arrayAdapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void updateStatusOfPassengers(){
+
+    }
+
+    private void createCurrentTripFirebase(){
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+        String departureTime = sdf.format(new Date());
+
+        String date = passengersList.get(0).getDate();
+
+        String uid = mAuth.getUid();
+        String driverName = myRef.child("Users").child("Drivers").child(uid).child("Name").toString();
+        try{
+            Log.i("info",driverName);
+        }
+        catch (Exception e){
+
+        }
+
+    }
 
     public void dialog(final int position, final View view){
 
@@ -52,7 +149,7 @@ public class StudentsDetails extends AppCompatActivity {
                 public void onClick(DialogInterface dialog, int id) {
 
                     textView.setChecked(true);
-                    Toast.makeText(StudentsDetails.this, arrayList.get(position).getName().toString(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(StudentsDetails.this, passengersList.get(position).getName().toString(), Toast.LENGTH_SHORT).show();
 
                 }
             });
@@ -69,8 +166,8 @@ public class StudentsDetails extends AppCompatActivity {
 
                 public void onClick(DialogInterface dialog, int id) {
 
-                    sharedPreferences.edit().putString("address", arrayList.get(position).getAddress());
-                    String address = arrayList.get(position).getAddress();
+                    //sharedPreferences.edit().putString("address", arrayList.get(position).getAddress());
+                    String address = passengersList.get(position).getAddress();
                     String[] split = address.split(" ");
                     address = "";
                     for (int i = 0; i < split.length - 1; i++) {
@@ -115,54 +212,5 @@ public class StudentsDetails extends AppCompatActivity {
 
             alertDialog.show();
         }
-    }
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_students_details);
-
-        listView = (ListView) findViewById(R.id.listView);
-        arrayAdapter = new CustomAdapter(this,R.layout.adapter_layout_view,arrayList);
-        listView.setAdapter(arrayAdapter);
-        sharedPreferences = this.getSharedPreferences("com.example.rishabh.shuttleuhome", Context.MODE_PRIVATE);
-
-        myRef.child("Booking").orderByChild("Status").equalTo("waiting").addChildEventListener(new ChildEventListener() {
-            @Override
-            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                String address = dataSnapshot.child("Address").getValue(String.class);
-                String name = dataSnapshot.child("Name").getValue(String.class);
-                DisplayListviewUserDetails data = new DisplayListviewUserDetails(name,address);
-                arrayList.add(data);
-                arrayAdapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
-
-            }
-
-            @Override
-            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
-        });
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                dialog(position, view);
-            }
-        });
     }
 }
