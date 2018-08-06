@@ -37,6 +37,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Map;
 
 public class StudentsDetails extends AppCompatActivity {
@@ -61,8 +62,8 @@ public class StudentsDetails extends AppCompatActivity {
     //Google API Key
     private final String key = "AIzaSyCoL4g2nqEaCEWMnovBFVbKqgOBpnKstqA";
 
-    //Passengers Map reamining address
-    private Map<String,String> passengersAddress;
+    //Passengers reamining for address
+    private ArrayList<DisplayListviewUserDetails> passengersAddress;
 
     //Waiting Time Variable
     private int waitingTime = 0;
@@ -101,9 +102,8 @@ public class StudentsDetails extends AppCompatActivity {
         arrayAdapter = new CustomAdapter(this,R.layout.adapter_layout_view,passengersList);
         passengersListview.setAdapter(arrayAdapter);
 
-        passengersAddress = new HashMap<String,String>();
+        passengersAddress = new ArrayList<DisplayListviewUserDetails>();
         orderOfPassengerDrop = new ArrayList<String>();
-
     }
 
     private void collectIntentData(){
@@ -124,8 +124,7 @@ public class StudentsDetails extends AppCompatActivity {
                     myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Address").setValue(temp.getAddress());
                     myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Name").setValue(temp.getName());
                     myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("SigninTime").setValue(temp.getTime());
-
-                    passengersAddress.put(temp.getSUID(),temp.getAddress());
+                    passengersAddress.add(temp);
                 }
                 myRef.child("CurrentTrip").child("Date").setValue(passengersList.get(0).getDate());
                 myRef.child("CurrentTrip").child("NumberOfPassengers").setValue(passengersList.size());
@@ -175,23 +174,21 @@ public class StudentsDetails extends AppCompatActivity {
         url += "destination=43.039563,-76.131628&"; //Destination DPS office
         url += "waypoints=optimize:true"; //Waypoints optimization True
 
-        for(String wayPoint : passengersAddress.values()){
-            url+="|"+wayPoint+" Syracuse,NY";
+        for(int i = 0; i < passengersAddress.size() ; i++){
+            url+="|"+passengersAddress.get(i).getAddress()+" Syracuse,NY";
         }
         url += "&key=" + key;
-
+        Log.i("URL",url);
         StringRequest request =  new StringRequest(url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.d("Code",response);
-
                 try {
                     JSONObject jsonObject = new JSONObject(response);
                     if(jsonObject.get("status").equals("OK")){
                         JSONArray waypoint_order = jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("waypoint_order");
                         ArrayList<DisplayListviewUserDetails> optimizePassengersList = new ArrayList<DisplayListviewUserDetails>();
                         for(int i = 0 ; i < waypoint_order.length() ; i++){
-                            optimizePassengersList.add(passengersList.get(Integer.parseInt(waypoint_order.get(i).toString())));
+                            optimizePassengersList.add(passengersList.get(waypoint_order.getInt(i)));
                         }
                         passengersList.clear();
                         passengersList.addAll(optimizePassengersList);
@@ -224,21 +221,24 @@ public class StudentsDetails extends AppCompatActivity {
     }
 
     private void calculateReaminingWaitingTime(String origin){
+
+        if(!origin.equals("43.039563,-76.131628"))
+            origin += " Syracuse,NY";
+
         String url = "https://maps.googleapis.com/maps/api/directions/json?"; //Google Direction API
         url += "origin="+origin+"&"; //Origin DPS Office
-        url += "destination=43.039563,-76.131628&"; //Destination DPS office
-        url += "waypoints=optimize:true"; //Waypoints optimization True
+        url += "destination=43.039563,-76.131628"; //Destination DPS office
+        if(passengersAddress.size() != 0)
+            url += "&waypoints=optimize:true"; //Waypoints optimization True
 
-        for(String wayPoint : passengersAddress.values()){
-            url+="|"+wayPoint+" Syracuse,NY";
+        for(int i = 0; i < passengersAddress.size() ; i++){
+            url+="|"+passengersAddress.get(i).getAddress()+" Syracuse,NY";
         }
         url += "&key=" + key;
 
         StringRequest request =  new StringRequest(url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.d("Code",response);
-
                 try {
                     JSONObject jsonObject = new JSONObject(response);
                     if(jsonObject.get("status").equals("OK")){
@@ -269,7 +269,7 @@ public class StudentsDetails extends AppCompatActivity {
         queue.add(request);
     }
 
-    public void dialog(final int position, final View view){
+    private void dialog(final int position, final View view){
 
         final CheckedTextView textView = (CheckedTextView) view.findViewById(R.id.textView1);
 
@@ -289,7 +289,11 @@ public class StudentsDetails extends AppCompatActivity {
                     SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
                     myRef.child("CurrentTrip").child("Students").child(passengersList.get(position).getSUID()).child("DropOffTime").setValue(sdf.format(new Date()));
                     orderOfPassengerDrop.add(passengersList.get(position).getSUID());
-                    passengersAddress.remove(passengersList.get(position).getSUID());
+                    for(int i = 0 ; i < passengersAddress.size() ; i++){
+                        if(passengersAddress.get(i).getSUID().equals(passengersList.get(position).getSUID())){
+                            passengersAddress.remove(i);
+                        }
+                    }
                     calculateReaminingWaitingTime(passengersList.get(position).getAddress());
                 }
             });
@@ -333,19 +337,25 @@ public class StudentsDetails extends AppCompatActivity {
                 public void onClick(DialogInterface dialog, int id) {
 
                     textView.setChecked(false);
-
+                    passengersAddress.add(passengersList.get(position));
+                    orderOfPassengerDrop.remove(passengersList.get(position).getSUID());
+                    if(orderOfPassengerDrop.isEmpty())
+                        calculateReaminingWaitingTime("43.039563,-76.131628");
+                    else {
+                        for(int i = 0; i < passengersList.size() ; i++){
+                            if(passengersList.get(i).getSUID().equals(orderOfPassengerDrop.get(orderOfPassengerDrop.size()-1))){
+                                calculateReaminingWaitingTime(passengersList.get(i).getAddress());
+                                break;
+                            }
+                        }
+                    }
                 }
             });
 
             alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
-
                 public void onClick(DialogInterface dialog, int id) {
-
-                    //...
-
                 }
             });
-
             alertDialog.show();
         }
     }
