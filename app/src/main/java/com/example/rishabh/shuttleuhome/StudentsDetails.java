@@ -16,6 +16,11 @@ import android.widget.CheckedTextView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -24,11 +29,15 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class StudentsDetails extends AppCompatActivity {
 
@@ -49,7 +58,18 @@ public class StudentsDetails extends AppCompatActivity {
     //Number of passengers Requested
     private int numberOfPassengers;
 
-    //SharedPreferences sharedPreferences;
+    //Google API Key
+    private final String key = "AIzaSyCoL4g2nqEaCEWMnovBFVbKqgOBpnKstqA";
+
+    //Passengers Map reamining address
+    private Map<String,String> passengersAddress;
+
+    //Waiting Time Variable
+    private int waitingTime = 0;
+
+    //Order of Passengers drop
+    private ArrayList<String> orderOfPassengerDrop;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,7 +79,6 @@ public class StudentsDetails extends AppCompatActivity {
         collectIntentData();
         fetchPassengersToListview(); // internal calling of createCurrentTripFirebase() function
         updateStatusOfPassengers();
-
 
         passengersListview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -82,6 +101,9 @@ public class StudentsDetails extends AppCompatActivity {
         arrayAdapter = new CustomAdapter(this,R.layout.adapter_layout_view,passengersList);
         passengersListview.setAdapter(arrayAdapter);
 
+        passengersAddress = new HashMap<String,String>();
+        orderOfPassengerDrop = new ArrayList<String>();
+
     }
 
     private void collectIntentData(){
@@ -102,10 +124,12 @@ public class StudentsDetails extends AppCompatActivity {
                     myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Address").setValue(temp.getAddress());
                     myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Name").setValue(temp.getName());
                     myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("SigninTime").setValue(temp.getTime());
-                }
-                arrayAdapter.notifyDataSetChanged();
-                myRef.child("CurrentTrip").child("NumberOfPassengers").setValue(passengersList.size());
 
+                    passengersAddress.put(temp.getSUID(),temp.getAddress());
+                }
+                myRef.child("CurrentTrip").child("Date").setValue(passengersList.get(0).getDate());
+                myRef.child("CurrentTrip").child("NumberOfPassengers").setValue(passengersList.size());
+                googleAPIforCallingWaitTime("43.039563,-76.131628");
                 createCurrentTripFirebase();
             }
 
@@ -121,9 +145,6 @@ public class StudentsDetails extends AppCompatActivity {
         //Fetch Time
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
         myRef.child("CurrentTrip").child("DepartureTime").setValue(sdf.format(new Date()));
-
-        //Fetch Date
-        myRef.child("CurrentTrip").child("Date").setValue(passengersList.get(0).getDate());
 
         //Fetch Driver's Name
         final String uid = mAuth.getUid();
@@ -144,9 +165,108 @@ public class StudentsDetails extends AppCompatActivity {
         });
     }
 
-
     private void updateStatusOfPassengers(){
 
+    }
+
+    private void googleAPIforCallingWaitTime(String origin){
+        String url = "https://maps.googleapis.com/maps/api/directions/json?"; //Google Direction API
+        url += "origin="+origin+"&"; //Origin DPS Office
+        url += "destination=43.039563,-76.131628&"; //Destination DPS office
+        url += "waypoints=optimize:true"; //Waypoints optimization True
+
+        for(String wayPoint : passengersAddress.values()){
+            url+="|"+wayPoint+" Syracuse,NY";
+        }
+        url += "&key=" + key;
+
+        StringRequest request =  new StringRequest(url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d("Code",response);
+
+                try {
+                    JSONObject jsonObject = new JSONObject(response);
+                    if(jsonObject.get("status").equals("OK")){
+                        JSONArray waypoint_order = jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("waypoint_order");
+                        ArrayList<DisplayListviewUserDetails> optimizePassengersList = new ArrayList<DisplayListviewUserDetails>();
+                        for(int i = 0 ; i < waypoint_order.length() ; i++){
+                            optimizePassengersList.add(passengersList.get(Integer.parseInt(waypoint_order.get(i).toString())));
+                        }
+                        passengersList.clear();
+                        passengersList.addAll(optimizePassengersList);
+                        arrayAdapter.notifyDataSetChanged();
+
+                        for(int i = 0 ; i < jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs").length() ; i++){
+                            String tempWaitTime = jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs")
+                                    .getJSONObject(i).getJSONObject("duration").getString("text");
+                            waitingTime += Integer.parseInt(tempWaitTime.split(" ")[0]);
+                        }
+                        myRef.child("WaitingTime").setValue(waitingTime);
+                    }
+                    else{
+                        Toast.makeText(StudentsDetails.this, "Error! Try Again!", Toast.LENGTH_SHORT).show();
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(StudentsDetails.this, "Check the internet connection and try again", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        queue.add(request);
+    }
+
+    private void calculateReaminingWaitingTime(String origin){
+        String url = "https://maps.googleapis.com/maps/api/directions/json?"; //Google Direction API
+        url += "origin="+origin+"&"; //Origin DPS Office
+        url += "destination=43.039563,-76.131628&"; //Destination DPS office
+        url += "waypoints=optimize:true"; //Waypoints optimization True
+
+        for(String wayPoint : passengersAddress.values()){
+            url+="|"+wayPoint+" Syracuse,NY";
+        }
+        url += "&key=" + key;
+
+        StringRequest request =  new StringRequest(url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d("Code",response);
+
+                try {
+                    JSONObject jsonObject = new JSONObject(response);
+                    if(jsonObject.get("status").equals("OK")){
+                        waitingTime = 0;
+                        for(int i = 0 ; i < jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs").length() ; i++){
+                            String tempWaitTime = jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs")
+                                    .getJSONObject(i).getJSONObject("duration").getString("text");
+                            waitingTime += Integer.parseInt(tempWaitTime.split(" ")[0]);
+                        }
+                        myRef.child("WaitingTime").setValue(waitingTime);
+                    }
+                    else{
+                        Toast.makeText(StudentsDetails.this, "Error! Try Again!", Toast.LENGTH_SHORT).show();
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(StudentsDetails.this, "Check the internet connection and try again", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        queue.add(request);
     }
 
     public void dialog(final int position, final View view){
@@ -158,23 +278,25 @@ public class StudentsDetails extends AppCompatActivity {
 
             alertDialog.setTitle("Select a Option");
 
-            alertDialog.setMessage("Drop or Navigate    ");
+            alertDialog.setMessage("Drop or Navigate");
 
             alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Drop", new DialogInterface.OnClickListener() {
 
                 public void onClick(DialogInterface dialog, int id) {
-
                     textView.setChecked(true);
-                    Toast.makeText(StudentsDetails.this, passengersList.get(position).getName().toString(), Toast.LENGTH_SHORT).show();
 
+                    //DropoffTime
+                    SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                    myRef.child("CurrentTrip").child("Students").child(passengersList.get(position).getSUID()).child("DropOffTime").setValue(sdf.format(new Date()));
+                    orderOfPassengerDrop.add(passengersList.get(position).getSUID());
+                    passengersAddress.remove(passengersList.get(position).getSUID());
+                    calculateReaminingWaitingTime(passengersList.get(position).getAddress());
                 }
             });
 
             alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
 
                 public void onClick(DialogInterface dialog, int id) {
-
-
                 }
             });
 
@@ -182,7 +304,6 @@ public class StudentsDetails extends AppCompatActivity {
 
                 public void onClick(DialogInterface dialog, int id) {
 
-                    //sharedPreferences.edit().putString("address", arrayList.get(position).getAddress());
                     String address = passengersList.get(position).getAddress();
                     String[] split = address.split(" ");
                     address = "";
@@ -195,7 +316,6 @@ public class StudentsDetails extends AppCompatActivity {
                     Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
                     mapIntent.setPackage("com.google.android.apps.maps");
                     startActivity(mapIntent);
-
                 }
             });
 
