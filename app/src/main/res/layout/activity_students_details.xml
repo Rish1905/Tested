@@ -19,30 +19,19 @@
         app:layout_constraintVertical_bias="1.0" />
 
     <Button
-        android:id="@+id/cancelTripButton"
-        android:layout_width="186dp"
+        android:id="@+id/completeTrip"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="10dp"
-        android:text="Cancel Trip"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/dropAllButton"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/displayPassengers" />
-
-    <Button
-        android:id="@+id/dropAllButton"
-        android:layout_width="175dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="10dp"
-        android:text="Drop All"
+        android:layout_marginTop="8dp"
+        android:background="@android:color/holo_orange_dark"
+        android:text="Complete Trip"
+        android:textSize="25sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/cancelTripButton"
-        app:layout_constraintTop_toBottomOf="@+id/displayPassengers" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/passengersListview" />
+
 </android.support.constraint.ConstraintLayout>

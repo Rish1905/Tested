@@ -20,6 +20,8 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.w3c.dom.Text;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +44,9 @@ public class Dashboard extends AppCompatActivity {
     //Textfield for total number of passengers requested by the driver
     private EditText numberOfPassengerRequested;
 
+    //TextField for driver's name
+    private TextView driverName;
+
     //Button for fetching data of students
     private Button requestPassengersButton;
 
@@ -61,6 +66,7 @@ public class Dashboard extends AppCompatActivity {
         setContentView(R.layout.activity_dashboard);
 
         init();
+        fetchDriverName();
         fetchNumberOfPassengersWaiting();
         addSignoutButtonFunction();
         addRequestPassengersButtonFunction();
@@ -75,9 +81,30 @@ public class Dashboard extends AppCompatActivity {
         numberOfPassengerRequested = (EditText) findViewById(R.id.numberOfPassengerRequested);
         requestPassengersButton = (Button) findViewById(R.id.requestPassengersButton);
         signout = (Button) findViewById(R.id.signout);
+        driverName = (TextView) findViewById(R.id.driverName);
         numberOfPassengerWaiting = (TextView) findViewById(R.id.numberOfPassengerWaiting);
 
-        numberOfPassengerWaiting.setText("Number of passengers waiting is "+totalNumberOfPassengerWaiting);
+        numberOfPassengerWaiting.setText(""+totalNumberOfPassengerWaiting);
+    }
+
+    //Fetch Driver Name
+    private void fetchDriverName(){
+        myRef.child("Users").child("Drivers").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for(DataSnapshot temp: dataSnapshot.getChildren()){
+                    if(temp.getKey().equals(mAuth.getUid())){
+                        driverName.setText("Hello, "+temp.child("Name").getValue(String.class));
+                        return;
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
     }
 
     //Fetching the number of passengers waiting for the shuttle
@@ -89,7 +116,7 @@ public class Dashboard extends AppCompatActivity {
                 if(dataSnapshot.child("Status").getValue(String.class).equals("waiting")) {
                     totalNumberOfPassengerWaiting++;
                     SUID.add(dataSnapshot.child("SUID").getValue(String.class));
-                    numberOfPassengerWaiting.setText("Number of passengers waiting is " + totalNumberOfPassengerWaiting);
+                    numberOfPassengerWaiting.setText("" + totalNumberOfPassengerWaiting);
                 }
             }
 
@@ -99,12 +126,12 @@ public class Dashboard extends AppCompatActivity {
                 if(SUID.contains(tempSUID)) {
                     SUID.remove(tempSUID);
                     totalNumberOfPassengerWaiting--;
-                    numberOfPassengerWaiting.setText("Number of passengers waiting is "+totalNumberOfPassengerWaiting);
+                    numberOfPassengerWaiting.setText(""+totalNumberOfPassengerWaiting);
                 }
                 else if(dataSnapshot.child("Status").getValue(String.class).equals("waiting")){
                     totalNumberOfPassengerWaiting++;
                     SUID.add(tempSUID);
-                    numberOfPassengerWaiting.setText("Number of passengers waiting is "+totalNumberOfPassengerWaiting);
+                    numberOfPassengerWaiting.setText(""+totalNumberOfPassengerWaiting);
                 }
             }
 
@@ -114,7 +141,7 @@ public class Dashboard extends AppCompatActivity {
                 if(SUID.contains(tempSUID)){
                     SUID.remove(tempSUID);
                     totalNumberOfPassengerWaiting--;
-                    numberOfPassengerWaiting.setText("Number of passengers waiting is "+totalNumberOfPassengerWaiting);
+                    numberOfPassengerWaiting.setText(""+totalNumberOfPassengerWaiting);
                 }
             }
 
@@ -124,7 +151,7 @@ public class Dashboard extends AppCompatActivity {
                 if(SUID.contains(tempSUID)){
                     SUID.remove(tempSUID);
                     totalNumberOfPassengerWaiting--;
-                    numberOfPassengerWaiting.setText("Number of passengers waiting is "+totalNumberOfPassengerWaiting);
+                    numberOfPassengerWaiting.setText(""+totalNumberOfPassengerWaiting);
                 }
             }
 

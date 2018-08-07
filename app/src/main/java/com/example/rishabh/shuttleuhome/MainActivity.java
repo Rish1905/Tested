@@ -20,8 +20,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,9 +60,28 @@ public class MainActivity extends AppCompatActivity {
                         public void onComplete(@NonNull Task<AuthResult> task) {
                             if (task.isSuccessful()) {
 
-                                Toast.makeText(MainActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
-                                Intent intent = new Intent(getApplicationContext(),Dashboard.class);
-                                startActivity(intent);
+                                myRef.child("Users").child("Drivers").addListenerForSingleValueEvent(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                        int check = 0;
+                                        for(DataSnapshot temp: dataSnapshot.getChildren()){
+                                            if(temp.getKey().equals(mAuth.getUid())){
+                                                Toast.makeText(MainActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
+                                                Intent intent = new Intent(getApplicationContext(),Dashboard.class);
+                                                startActivity(intent);
+                                                check = 1;
+                                            }
+                                        }
+                                        if(check == 0)
+                                            Toast.makeText(MainActivity.this, "Email and Password not linked to driver's account", Toast.LENGTH_SHORT).show();
+                                    }
+
+                                    @Override
+                                    public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                                    }
+                                });
+
                             } else {
                                 Toast.makeText(MainActivity.this, "Incorrect LoginID and Password", Toast.LENGTH_SHORT).show();
                             }
@@ -128,49 +150,11 @@ public class MainActivity extends AppCompatActivity {
           // dummyData();
     }
 
-   /* public void dummyData(){
-        Map<String,String> map = new HashMap<String,String>();
-        map.put("Address","205 Lexington Ave");
-        map.put("Date","08/03/2013");
-        map.put("Name","Rishabh Agrawal");
-        map.put("SUID","850000001");
-        map.put("Status","waiting");
-        map.put("Time","20:40:23");
-        myRef.child("Booking").push().setValue(map);
-
-        Map<String,String> map1 = new HashMap<String,String>();
-        map1.put("Address","412 Columbus Ave");
-        map1.put("Date","08/03/2013");
-        map1.put("Name","Aviek Singh");
-        map1.put("SUID","850000002");
-        map1.put("Status","waiting");
-        map1.put("Time","20:42:23");
-        myRef.child("Booking").push().setValue(map1);
-
-        Map<String,String> map2 = new HashMap<String,String>();
-        map2.put("Address","1020 Westcott Ave");
-        map2.put("Date","08/03/2013");
-        map2.put("Name","Dharani Dharan");
-        map2.put("SUID","850000003");
-        map2.put("Status","waiting");
-        map2.put("Time","20:44:23");
-        myRef.child("Booking").push().setValue(map2);
-
-        Map<String,String> map3 = new HashMap<String,String>();
-        map3.put("Address","123 Euclid Ave");
-        map3.put("Date","08/03/2013");
-        map3.put("Name","Mukul Agrawal");
-        map3.put("SUID","850000004");
-        map3.put("Status","waiting");
-        map3.put("Time","20:46:23");
-        myRef.child("Booking").push().setValue(map3);
-    }*/
-
 
     @Override
     protected void onResume() {
         super.onResume();
-        email.setText("");
-        password.setText("");
+        //email.setText("");
+        //password.setText("");
     }
 }

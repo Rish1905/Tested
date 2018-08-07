@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.CheckedTextView;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -71,6 +72,15 @@ public class StudentsDetails extends AppCompatActivity {
     //Order of Passengers drop
     private ArrayList<String> orderOfPassengerDrop;
 
+    //Button for Complete Trip
+    private Button completeTrip;
+
+    //Date Format
+    SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy");
+
+    //Time Format
+    SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -78,8 +88,8 @@ public class StudentsDetails extends AppCompatActivity {
 
         init();
         collectIntentData();
-        fetchPassengersToListview(); // internal calling of createCurrentTripFirebase() function
-        updateStatusOfPassengers();
+        fetchPassengersToListview(); // internal calling of createCurrentTripFirebase() function and UpdateStatus fucction;
+        addCompleteTripButtonFunction();
 
         passengersListview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -104,6 +114,7 @@ public class StudentsDetails extends AppCompatActivity {
 
         passengersAddress = new ArrayList<DisplayListviewUserDetails>();
         orderOfPassengerDrop = new ArrayList<String>();
+        completeTrip = (Button) findViewById(R.id.completeTrip);
     }
 
     private void collectIntentData(){
@@ -119,15 +130,10 @@ public class StudentsDetails extends AppCompatActivity {
                 for(DataSnapshot data : dataSnapshot.getChildren()){
                     DisplayListviewUserDetails temp = new DisplayListviewUserDetails(data.child("Address").getValue(String.class),
                             data.child("Name").getValue(String.class),data.child("Date").getValue(String.class),
-                            data.child("SUID").getValue(String.class),data.child("Time").getValue(String.class));
+                            data.child("SUID").getValue(String.class),data.child("Time").getValue(String.class),data.getKey());
                     passengersList.add(temp);
-                    myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Address").setValue(temp.getAddress());
-                    myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("Name").setValue(temp.getName());
-                    myRef.child("CurrentTrip").child("Students").child(temp.getSUID()).child("SigninTime").setValue(temp.getTime());
                     passengersAddress.add(temp);
                 }
-                myRef.child("CurrentTrip").child("Date").setValue(passengersList.get(0).getDate());
-                myRef.child("CurrentTrip").child("NumberOfPassengers").setValue(passengersList.size());
                 googleAPIforCallingWaitTime("43.039563,-76.131628");
                 createCurrentTripFirebase();
             }
@@ -141,21 +147,41 @@ public class StudentsDetails extends AppCompatActivity {
 
     private void createCurrentTripFirebase(){
 
-        //Fetch Time
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-        myRef.child("CurrentTrip").child("DepartureTime").setValue(sdf.format(new Date()));
-
         //Fetch Driver's Name
         final String uid = mAuth.getUid();
         myRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                Map<String,Object> dataObject = new HashMap<String,Object>();
+
+                //Fetch Date
+                dataObject.put("Date",dateFormat.format(new Date()));
+
+                //Fetch Time
+                dataObject.put("DepartureTime",timeFormat.format(new Date()));
+
+                dataObject.put("NumberOfPassengers",passengersList.size());
+
+                Map<String,Object> students = new HashMap<String,Object>();
+                for(int i = 0; i < passengersList.size() ; i++){
+                    Map<String,String> studentDetail = new HashMap<String,String>();
+                    studentDetail.put("Address",passengersList.get(i).getAddress());
+                    studentDetail.put("Date",passengersList.get(i).getDate());
+                    studentDetail.put("Name",passengersList.get(i).getName());
+                    studentDetail.put("SigninTime",passengersList.get(i).getTime());
+                    students.put(passengersList.get(i).getSUID(),studentDetail);
+                }
+                dataObject.put("Students",students);
+
                 for(DataSnapshot data: dataSnapshot.getChildren()){
                     if(data.getKey().equals("Users"))
-                        myRef.child("CurrentTrip").child("DriverName").setValue(data.child("Drivers").child(uid).child("Name").getValue().toString());
+                        dataObject.put("DriverName",data.child("Drivers").child(uid).child("Name").getValue().toString());
                     else if(data.getKey().equals("SupervisorName"))
-                        myRef.child("CurrentTrip").child("SupervisorName").setValue(data.getValue().toString());
+                        dataObject.put("SupervisorName",data.getValue().toString());
                 }
+
+                myRef.child("CurrentTrip").setValue(dataObject);
             }
 
             @Override
@@ -165,7 +191,87 @@ public class StudentsDetails extends AppCompatActivity {
     }
 
     private void updateStatusOfPassengers(){
+        for(int i = 0 ; i < passengersList.size() ; i++){
+            myRef.child("Booking").child(passengersList.get(i).getUID()).child("Status").setValue("travelling");
+        }
+    }
 
+    private void addCompleteTripButtonFunction(){
+        final AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+        completeTrip.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                alertDialog.setTitle("Are you sure !");
+
+                if(passengersAddress.size() != 0)
+                    alertDialog.setMessage("Some passengers are pending to be dropped, Are you sure you want to complete trip ?");
+                else
+                    alertDialog.setMessage("Do you want to complete Trip ?");
+
+                alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int id) {
+                    }
+                });
+
+                alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Complete Trip", new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int id) {
+
+                        if(passengersAddress.size() != 0){
+                            for(int i = 0 ; i < passengersAddress.size() ; i++){
+                                myRef.child("CurrentTrip").child("Students").child(passengersAddress.get(i).getSUID()).child("DropOffTime").setValue(timeFormat.format(new Date()));
+                            }
+                        }
+
+                        myRef.child("CurrentTrip").addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                Map<String,Object> databaseObject = new HashMap<String,Object>();
+                                try{
+                                    String date = dataSnapshot.child("Date").getValue(String.class);
+                                    databaseObject = (Map<String,Object>)dataSnapshot.getValue();
+                                    databaseObject.put("ReturnTime",timeFormat.format(new Date()));
+                                    databaseObject.remove("Date");
+                                    myRef.child("Database").child(date).push().setValue(databaseObject);
+                                }
+                                catch(Exception e){
+                                    Toast.makeText(StudentsDetails.this, "Something Went Wrong !", Toast.LENGTH_SHORT).show();
+                                    e.printStackTrace();
+                                }
+
+                                myRef.child("CurrentTrip").removeValue();
+
+                                myRef.child("Booking").addListenerForSingleValueEvent(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                        for(DataSnapshot data:dataSnapshot.getChildren()){
+                                            String status = data.child("Status").getValue(String.class);
+                                            if(status.equals("travelling") || status.equals("dropped"))
+                                                myRef.child("Booking").child(data.getKey()).removeValue();
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                                    }
+                                });
+
+                                myRef.child("WaitingTime").setValue(0);
+                                finish();
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                            }
+                        });
+                    }
+                });
+                alertDialog.show();
+            }
+        });
     }
 
     private void googleAPIforCallingWaitTime(String origin){
@@ -200,6 +306,8 @@ public class StudentsDetails extends AppCompatActivity {
                             waitingTime += Integer.parseInt(tempWaitTime.split(" ")[0]);
                         }
                         myRef.child("WaitingTime").setValue(waitingTime);
+
+                        updateStatusOfPassengers();
                     }
                     else{
                         Toast.makeText(StudentsDetails.this, "Error! Try Again!", Toast.LENGTH_SHORT).show();
@@ -286,14 +394,14 @@ public class StudentsDetails extends AppCompatActivity {
                     textView.setChecked(true);
 
                     //DropoffTime
-                    SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-                    myRef.child("CurrentTrip").child("Students").child(passengersList.get(position).getSUID()).child("DropOffTime").setValue(sdf.format(new Date()));
+                    myRef.child("CurrentTrip").child("Students").child(passengersList.get(position).getSUID()).child("DropOffTime").setValue(timeFormat.format(new Date()));
                     orderOfPassengerDrop.add(passengersList.get(position).getSUID());
                     for(int i = 0 ; i < passengersAddress.size() ; i++){
                         if(passengersAddress.get(i).getSUID().equals(passengersList.get(position).getSUID())){
                             passengersAddress.remove(i);
                         }
                     }
+                    myRef.child("Booking").child(passengersList.get(position).getUID()).child("Status").setValue("dropped");
                     calculateReaminingWaitingTime(passengersList.get(position).getAddress());
                 }
             });
@@ -349,6 +457,7 @@ public class StudentsDetails extends AppCompatActivity {
                             }
                         }
                     }
+                    myRef.child("Booking").child(passengersList.get(position).getUID()).child("Status").setValue("travelling");
                 }
             });
 

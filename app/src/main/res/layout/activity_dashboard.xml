@@ -13,7 +13,6 @@
         android:layout_marginEnd="16dp"
         android:layout_marginStart="280dp"
         android:layout_marginTop="16dp"
-        android:onClick="buttonClick"
         android:text="SignOut"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -21,41 +20,79 @@
 
     <Button
         android:id="@+id/requestPassengersButton"
-        android:layout_width="211dp"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="92dp"
-        android:layout_marginStart="93dp"
-        android:layout_marginTop="21dp"
-        android:onClick="fetchData"
-        android:text="Fetch Data"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:background="@android:color/holo_orange_dark"
+        android:text="Start Trip"
+        android:textSize="25sp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/numberOfPassengerRequested" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <EditText
         android:id="@+id/numberOfPassengerRequested"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="53dp"
+        android:layout_marginBottom="16dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="100dp"
         android:ems="10"
         android:hint="Enter Number of Passengers"
         android:inputType="number"
+        app:layout_constraintBottom_toTopOf="@+id/requestPassengersButton"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/signout" />
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/numberOfPassengerWaiting"
-        android:layout_width="346dp"
-        android:layout_height="43dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginBottom="32dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="69dp"
-        android:text="TextView"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:text="0"
+        android:textSize="70sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/numberOfPassengerRequested"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/passengerWaiting" />
+
+    <TextView
+        android:id="@+id/passengerWaiting"
+        android:layout_width="0dp"
+        android:layout_height="45dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:text="Passengers waiting"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/driverName" />
+
+    <TextView
+        android:id="@+id/driverName"
+        android:layout_width="0dp"
+        android:layout_height="53dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="15dp"
+        android:gravity="center"
+        android:text="Rishabh Agrawal"
+        android:textSize="20sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/requestPassengersButton" />
+        app:layout_constraintTop_toBottomOf="@+id/signout" />
 
 </android.support.constraint.ConstraintLayout>

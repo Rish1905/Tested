@@ -49,11 +49,22 @@ public class DisplayListviewUserDetails {
     private String SUID;
     private String time;
 
-    public DisplayListviewUserDetails(String address, String name, String date, String SUID, String time) {
+    public String getUID() {
+        return UID;
+    }
+
+    public void setUID(String UID) {
+        this.UID = UID;
+    }
+
+    private String UID;
+
+    public DisplayListviewUserDetails(String address, String name, String date, String SUID, String time, String UID) {
         this.address = address;
         this.name = name;
         this.date = date;
         this.SUID = SUID;
         this.time = time;
+        this.UID = UID;
     }
 }
