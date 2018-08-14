@@ -10,6 +10,8 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
@@ -17,6 +19,8 @@ import android.widget.CheckedTextView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -66,9 +70,6 @@ public class StudentsDetails extends AppCompatActivity {
     //Passengers reamining for address
     private ArrayList<DisplayListviewUserDetails> passengersAddress;
 
-    //Waiting Time Variable
-    private int waitingTime = 0;
-
     //Order of Passengers drop
     private ArrayList<String> orderOfPassengerDrop;
 
@@ -97,6 +98,11 @@ public class StudentsDetails extends AppCompatActivity {
                 dialog(position, view);
             }
         });
+
+        if(getSupportActionBar()!=null){
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setDisplayShowHomeEnabled(true);
+        }
     }
 
     private void init(){
@@ -117,6 +123,28 @@ public class StudentsDetails extends AppCompatActivity {
         completeTrip = (Button) findViewById(R.id.completeTrip);
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        super.onCreateOptionsMenu(menu);
+
+        getMenuInflater().inflate(R.menu.menu,menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch(item.getItemId()){
+            case android.R.id.home:
+                cancelTrip();
+                break;
+            case R.id.cancelTrip:
+                cancelTrip();
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     private void collectIntentData(){
         Intent intent = getIntent();
         numberOfPassengers = intent.getIntExtra("Passengers",0);
@@ -124,13 +152,16 @@ public class StudentsDetails extends AppCompatActivity {
 
     private void fetchPassengersToListview(){
 
+        //Fetching the passengers from Booking table
         myRef.child("Booking").orderByChild("Status").equalTo("waiting").limitToFirst(numberOfPassengers).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 for(DataSnapshot data : dataSnapshot.getChildren()){
-                    DisplayListviewUserDetails temp = new DisplayListviewUserDetails(data.child("Address").getValue(String.class),
+                    DisplayListviewUserDetails temp = new DisplayListviewUserDetails(
+                            data.child("HouseNo").getValue(String.class)+" "+data.child("StreetAddress").getValue(String.class),
                             data.child("Name").getValue(String.class),data.child("Date").getValue(String.class),
-                            data.child("SUID").getValue(String.class),data.child("Time").getValue(String.class),data.getKey());
+                            data.child("SUID").getValue(String.class),data.child("Time").getValue(String.class),data.getKey(),
+                            data.child("SupervisorName").getValue(String.class));
                     passengersList.add(temp);
                     passengersAddress.add(temp);
                 }
@@ -170,18 +201,22 @@ public class StudentsDetails extends AppCompatActivity {
                     studentDetail.put("Date",passengersList.get(i).getDate());
                     studentDetail.put("Name",passengersList.get(i).getName());
                     studentDetail.put("SigninTime",passengersList.get(i).getTime());
+                    studentDetail.put("SupervisorName",passengersList.get(i).getSupervisorName());
                     students.put(passengersList.get(i).getSUID(),studentDetail);
                 }
                 dataObject.put("Students",students);
 
                 for(DataSnapshot data: dataSnapshot.getChildren()){
                     if(data.getKey().equals("Users"))
-                        dataObject.put("DriverName",data.child("Drivers").child(uid).child("Name").getValue().toString());
+                        for(DataSnapshot data1 : data.child("Drivers").getChildren()){
+                            if(data1.child("UserId").equals(mAuth.getUid()))
+                                dataObject.put("DriverName",data1.child("Name").getValue(String.class));
+                        }
                     else if(data.getKey().equals("SupervisorName"))
-                        dataObject.put("SupervisorName",data.getValue().toString());
+                        dataObject.put("SupervisorName",data.child("Name").getValue().toString());
                 }
 
-                myRef.child("CurrentTrip").setValue(dataObject);
+                myRef.child("CurrentTrip").setValue(dataObject); //Push Current Trip
             }
 
             @Override
@@ -192,7 +227,7 @@ public class StudentsDetails extends AppCompatActivity {
 
     private void updateStatusOfPassengers(){
         for(int i = 0 ; i < passengersList.size() ; i++){
-            myRef.child("Booking").child(passengersList.get(i).getUID()).child("Status").setValue("travelling");
+            myRef.child("Booking").child(passengersList.get(i).getUID()).child("Status").setValue("Travelling");
         }
     }
 
@@ -225,6 +260,7 @@ public class StudentsDetails extends AppCompatActivity {
                             }
                         }
 
+                        //Database Insertion
                         myRef.child("CurrentTrip").addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
                             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -241,6 +277,7 @@ public class StudentsDetails extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
 
+                                //Delete Current Trip
                                 myRef.child("CurrentTrip").removeValue();
 
                                 myRef.child("Booking").addListenerForSingleValueEvent(new ValueEventListener() {
@@ -248,7 +285,7 @@ public class StudentsDetails extends AppCompatActivity {
                                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                                         for(DataSnapshot data:dataSnapshot.getChildren()){
                                             String status = data.child("Status").getValue(String.class);
-                                            if(status.equals("travelling") || status.equals("dropped"))
+                                            if(status.equals("Travelling") || status.equals("Safely Transported"))
                                                 myRef.child("Booking").child(data.getKey()).removeValue();
                                         }
                                     }
@@ -258,8 +295,6 @@ public class StudentsDetails extends AppCompatActivity {
 
                                     }
                                 });
-
-                                myRef.child("WaitingTime").setValue(0);
                                 finish();
                             }
 
@@ -281,11 +316,12 @@ public class StudentsDetails extends AppCompatActivity {
         url += "waypoints=optimize:true"; //Waypoints optimization True
 
         for(int i = 0; i < passengersAddress.size() ; i++){
-            url+="|"+passengersAddress.get(i).getAddress()+" Syracuse,NY";
+            String add = passengersAddress.get(i).getAddress().trim().replace(" ","+");
+            url+="|"+add+"+Syracuse,NY";
         }
         url += "&key=" + key;
         Log.i("URL",url);
-        StringRequest request =  new StringRequest(url, new Response.Listener<String>() {
+        StringRequest request = new StringRequest(Request.Method.POST,url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
                 try {
@@ -300,13 +336,6 @@ public class StudentsDetails extends AppCompatActivity {
                         passengersList.addAll(optimizePassengersList);
                         arrayAdapter.notifyDataSetChanged();
 
-                        for(int i = 0 ; i < jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs").length() ; i++){
-                            String tempWaitTime = jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs")
-                                    .getJSONObject(i).getJSONObject("duration").getString("text");
-                            waitingTime += Integer.parseInt(tempWaitTime.split(" ")[0]);
-                        }
-                        myRef.child("WaitingTime").setValue(waitingTime);
-
                         updateStatusOfPassengers();
                     }
                     else{
@@ -320,58 +349,15 @@ public class StudentsDetails extends AppCompatActivity {
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Toast.makeText(StudentsDetails.this, "Check the internet connection and try again", Toast.LENGTH_SHORT).show();
+                arrayAdapter.notifyDataSetChanged();
+                updateStatusOfPassengers();
             }
-        });
-
-        RequestQueue queue = Volley.newRequestQueue(this);
-        queue.add(request);
-    }
-
-    private void calculateReaminingWaitingTime(String origin){
-
-        if(!origin.equals("43.039563,-76.131628"))
-            origin += " Syracuse,NY";
-
-        String url = "https://maps.googleapis.com/maps/api/directions/json?"; //Google Direction API
-        url += "origin="+origin+"&"; //Origin DPS Office
-        url += "destination=43.039563,-76.131628"; //Destination DPS office
-        if(passengersAddress.size() != 0)
-            url += "&waypoints=optimize:true"; //Waypoints optimization True
-
-        for(int i = 0; i < passengersAddress.size() ; i++){
-            url+="|"+passengersAddress.get(i).getAddress()+" Syracuse,NY";
-        }
-        url += "&key=" + key;
-
-        StringRequest request =  new StringRequest(url, new Response.Listener<String>() {
+        }){
             @Override
-            public void onResponse(String response) {
-                try {
-                    JSONObject jsonObject = new JSONObject(response);
-                    if(jsonObject.get("status").equals("OK")){
-                        waitingTime = 0;
-                        for(int i = 0 ; i < jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs").length() ; i++){
-                            String tempWaitTime = jsonObject.getJSONArray("routes").getJSONObject(0).getJSONArray("legs")
-                                    .getJSONObject(i).getJSONObject("duration").getString("text");
-                            waitingTime += Integer.parseInt(tempWaitTime.split(" ")[0]);
-                        }
-                        myRef.child("WaitingTime").setValue(waitingTime);
-                    }
-                    else{
-                        Toast.makeText(StudentsDetails.this, "Error! Try Again!", Toast.LENGTH_SHORT).show();
-                    }
-
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+            public String getBodyContentType() {
+                return "application/json";
             }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Toast.makeText(StudentsDetails.this, "Check the internet connection and try again", Toast.LENGTH_SHORT).show();
-            }
-        });
+        };
 
         RequestQueue queue = Volley.newRequestQueue(this);
         queue.add(request);
@@ -401,8 +387,7 @@ public class StudentsDetails extends AppCompatActivity {
                             passengersAddress.remove(i);
                         }
                     }
-                    myRef.child("Booking").child(passengersList.get(position).getUID()).child("Status").setValue("dropped");
-                    calculateReaminingWaitingTime(passengersList.get(position).getAddress());
+                    myRef.child("Booking").child(passengersList.get(position).getUID()).child("Status").setValue("Safely Transported");
                 }
             });
 
@@ -447,17 +432,7 @@ public class StudentsDetails extends AppCompatActivity {
                     textView.setChecked(false);
                     passengersAddress.add(passengersList.get(position));
                     orderOfPassengerDrop.remove(passengersList.get(position).getSUID());
-                    if(orderOfPassengerDrop.isEmpty())
-                        calculateReaminingWaitingTime("43.039563,-76.131628");
-                    else {
-                        for(int i = 0; i < passengersList.size() ; i++){
-                            if(passengersList.get(i).getSUID().equals(orderOfPassengerDrop.get(orderOfPassengerDrop.size()-1))){
-                                calculateReaminingWaitingTime(passengersList.get(i).getAddress());
-                                break;
-                            }
-                        }
-                    }
-                    myRef.child("Booking").child(passengersList.get(position).getUID()).child("Status").setValue("travelling");
+                    myRef.child("Booking").child(passengersList.get(position).getUID()).child("Status").setValue("Travelling");
                 }
             });
 
@@ -467,5 +442,38 @@ public class StudentsDetails extends AppCompatActivity {
             });
             alertDialog.show();
         }
+    }
+
+    private void cancelTrip(){
+        final AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+
+                alertDialog.setTitle("Are you sure !");
+
+                alertDialog.setMessage("Are you sure you want to cancel current trip?");
+
+                alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int id) {
+                    }
+                });
+
+                alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Cancel Trip", new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int id) {
+
+                        for(int i = 0 ; i < passengersList.size() ; i++){
+                            myRef.child("Booking").child(passengersList.get(i).getUID()).child("Status").setValue("waiting");
+                        }
+
+                        myRef.child("CurrentTrip").removeValue();
+                        finish();
+                    }
+                });
+                alertDialog.show();
+    }
+
+    @Override
+    public void onBackPressed() {
+        cancelTrip();
     }
 }

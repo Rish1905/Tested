@@ -32,9 +32,10 @@ public class CustomAdapter extends ArrayAdapter<DisplayListviewUserDetails> {
         String SUID = getItem(position).getSUID();
         String time = getItem(position).getTime();
         String UID = getItem(position).getUID();
+        String supervisorName = getItem(position).getSupervisorName();
 
         //Create the person object with the information
-        DisplayListviewUserDetails person = new DisplayListviewUserDetails(name,address,date,SUID,time,UID);
+        DisplayListviewUserDetails person = new DisplayListviewUserDetails(name,address,date,SUID,time,UID,supervisorName);
 
         LayoutInflater inflater = LayoutInflater.from(mContext);
         convertView = inflater.inflate(mResource, parent, false);

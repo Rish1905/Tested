@@ -49,6 +49,16 @@ public class DisplayListviewUserDetails {
     private String SUID;
     private String time;
 
+    public String getSupervisorName() {
+        return supervisorName;
+    }
+
+    public void setSupervisorName(String supervisorName) {
+        this.supervisorName = supervisorName;
+    }
+
+    private String supervisorName;
+
     public String getUID() {
         return UID;
     }
@@ -59,12 +69,13 @@ public class DisplayListviewUserDetails {
 
     private String UID;
 
-    public DisplayListviewUserDetails(String address, String name, String date, String SUID, String time, String UID) {
+    public DisplayListviewUserDetails(String address, String name, String date, String SUID, String time, String UID, String supervisorName) {
         this.address = address;
         this.name = name;
         this.date = date;
         this.SUID = SUID;
         this.time = time;
         this.UID = UID;
+        this.supervisorName = supervisorName;
     }
 }

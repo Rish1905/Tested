@@ -33,7 +33,7 @@ public class Dashboard extends AppCompatActivity {
     private DatabaseReference myRef;
 
     //Number of passengers limit
-    private int passengerLimit = 8;
+    private int passengerLimit = 10;
 
     //Total Number of passerngers requested by the driver
     private int numberOfPassengers = 0;
@@ -58,7 +58,6 @@ public class Dashboard extends AppCompatActivity {
 
     //SUID List for waiting passengers
     List<String> SUID = new ArrayList<String>();
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,22 +88,28 @@ public class Dashboard extends AppCompatActivity {
 
     //Fetch Driver Name
     private void fetchDriverName(){
-        myRef.child("Users").child("Drivers").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                for(DataSnapshot temp: dataSnapshot.getChildren()){
-                    if(temp.getKey().equals(mAuth.getUid())){
-                        driverName.setText("Hello, "+temp.child("Name").getValue(String.class));
-                        return;
+        try {
+            myRef.child("Users").child("Drivers").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    for (DataSnapshot temp : dataSnapshot.getChildren()) {
+                        if (temp.child("UserId").getValue(String.class).equals(mAuth.getUid())) {
+                            driverName.setText("Hello, " + temp.child("Name").getValue(String.class));
+                            return;
+                        }
                     }
                 }
-            }
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
 
-            }
-        });
+                }
+            });
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            Toast.makeText(this, "Check Internet Connection !", Toast.LENGTH_SHORT).show();
+        }
     }
 
     //Fetching the number of passengers waiting for the shuttle
@@ -187,10 +192,16 @@ public class Dashboard extends AppCompatActivity {
                     return;
                 }
                 numberOfPassengers = Integer.parseInt(numberOfPassengerRequested.getText().toString());
-                if(numberOfPassengers > totalNumberOfPassengerWaiting){
+                if(numberOfPassengers == 0){
+                    Toast.makeText(Dashboard.this, "Number of passengers can't be 0", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                else if(numberOfPassengers > 10){
+                    Toast.makeText(Dashboard.this, "Number of passengers limit to 10", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                else if(numberOfPassengers > totalNumberOfPassengerWaiting){
                     Toast.makeText(Dashboard.this, "Number of Passengers are less than requested", Toast.LENGTH_SHORT).show();
-                    numberOfPassengerRequested.setText("");
-                    numberOfPassengers = 0;
                     return;
                 }
                 else{

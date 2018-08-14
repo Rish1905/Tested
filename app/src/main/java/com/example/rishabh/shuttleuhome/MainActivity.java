@@ -26,6 +26,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,8 +43,10 @@ public class MainActivity extends AppCompatActivity {
     EditText password; // Password variable
 
     //Login Button click
-    public void loginButtonClick(View view){
+   public void loginButtonClick(View view){
         Log.i("info","Button Click");
+        if(!isConnected(this))
+            return;
         String loginEmail = email.getText().toString();
         String loginPassword = password.getText().toString();
 
@@ -65,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
                                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                                         int check = 0;
                                         for(DataSnapshot temp: dataSnapshot.getChildren()){
-                                            if(temp.getKey().equals(mAuth.getUid())){
+                                            if(temp.child("UserId").getValue(String.class).equals(mAuth.getUid())){
                                                 Toast.makeText(MainActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
                                                 Intent intent = new Intent(getApplicationContext(),Dashboard.class);
                                                 startActivity(intent);
@@ -75,10 +82,8 @@ public class MainActivity extends AppCompatActivity {
                                         if(check == 0)
                                             Toast.makeText(MainActivity.this, "Email and Password not linked to driver's account", Toast.LENGTH_SHORT).show();
                                     }
-
                                     @Override
                                     public void onCancelled(@NonNull DatabaseError databaseError) {
-
                                     }
                                 });
 
@@ -95,8 +100,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-   /* private void showDialog()
-    {
+   private void showDialog(){
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage("Connect to Cellular Data")
                 .setCancelable(false)
@@ -113,20 +117,18 @@ public class MainActivity extends AppCompatActivity {
                 });
         AlertDialog alert = builder.create();
         alert.show();
-    } */
+    }
 
-   /* public boolean isConnected(Context context) {
+   public boolean isConnected(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-        NetworkInfo mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
 
-        if ((wifiInfo != null && wifiInfo.isConnected()) || (mobileInfo != null && mobileInfo.isConnected())) {
+        if (connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected()) {
             return true;
         } else {
             showDialog();
             return false;
         }
-    } */
+    }
 
        @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,10 +148,53 @@ public class MainActivity extends AppCompatActivity {
         myRef = database.getReference();
 
         //Check if Network Connection is open or not.
-        // isConnected(this);
           // dummyData();
-    }
 
+           /*Map<String,String> map = new HashMap<String,String>();
+           map.put("Name","Rishabh Agrawal");
+           map.put("SUID","850490879");
+           map.put("Date","08-07-2018");
+           map.put("Status","waiting");
+           map.put("Time","02:13:12");
+           map.put("Address","205 Lexington ave");
+           myRef.child("Booking").push().setValue(map);
+
+           Map<String,String> map1 = new HashMap<String,String>();
+           map1.put("Name","Mukul Agrawal");
+           map1.put("SUID","850490878");
+           map1.put("Date","08-07-2018");
+           map1.put("Status","waiting");
+           map1.put("Time","02:13:13");
+           map1.put("Address","141 Lexington ave");
+           myRef.child("Booking").push().setValue(map1);
+
+           Map<String,String> map2 = new HashMap<String,String>();
+           map2.put("Name","Nitish Agrawal");
+           map2.put("SUID","850490877");
+           map2.put("Date","08-07-2018");
+           map2.put("Status","waiting");
+           map2.put("Time","02:13:14");
+           map2.put("Address","135 Lexington ave");
+           myRef.child("Booking").push().setValue(map2);
+
+           Map<String,String> map3 = new HashMap<String,String>();
+           map3.put("Name","Arsheen Agrawal");
+           map3.put("SUID","850490876");
+           map3.put("Date","08-07-2018");
+           map3.put("Status","waiting");
+           map3.put("Time","02:13:15");
+           map3.put("Address","312 westcott ave");
+           myRef.child("Booking").push().setValue(map3);
+
+           Map<String,String> map4 = new HashMap<String,String>();
+           map4.put("Name","Aashawaree Agrawal");
+           map4.put("SUID","850490875");
+           map4.put("Date","08-07-2018");
+           map4.put("Status","waiting");
+           map4.put("Time","02:13:16");
+           map4.put("Address","1020 westcott ave");
+           myRef.child("Booking").push().setValue(map4);*/
+    }
 
     @Override
     protected void onResume() {
@@ -157,4 +202,25 @@ public class MainActivity extends AppCompatActivity {
         //email.setText("");
         //password.setText("");
     }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
 }
